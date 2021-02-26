@@ -14,7 +14,7 @@ First start requires some setup:
 docker pull dragoonaethis/gierszerec
 docker volume create rec
 
-docker run --name gierszerec --publish 5900:5900 --mount source=rec,target=/rec dragoonaethis/gierszerec
+docker run --name gierszerec --publish 5900:5900 --mount source=rec,target=/rec --detach dragoonaethis/gierszerec
 ```
 
 If you'd rather build the image from scratch instead of pulling (swap the tag in `docker run`):
@@ -51,6 +51,7 @@ some reason PulseAudio dies every now and then. If that happens, recreate the co
 - `docker rm gierszerec`,
 - `docker run ...` command from the first start section.
 
+
 ## Record with ffmpeg
 
 If you don't have a machine powerful enough to handle OBS (for example, if running on a shared host)
@@ -64,6 +65,10 @@ ffmpeg -video_size 1920x1080 -framerate 30 \
     -c:v h264 -preset ultrafast \
     "/rec/$(date +'%Y-%m-%e %X').mkv"
 ```
+
+This script is also shipped as [`rec`](rec) in the Docker image, so you can just start xterm -> rec
+and off you go.
+
 
 ## Hetzner helper
 

@@ -20,10 +20,13 @@ COPY obs.global.ini /root/.config/obs-studio/global.ini
 COPY obs.basic.ini /root/.config/obs-studio/basic/profiles/Untitled/basic.ini
 COPY obs.scene.json /root/.config/obs-studio/basic/scenes/Untitled.json
 
+ADD rec /bin/rec
+RUN chmod +x /bin/rec
+
 ENV DISPLAY :0
 ENV QT_X11_NO_MITSHM 1
 CMD dbus-run-session xinit -- :0 -nolisten tcp vt$XDG_VTNR -noreset +extension GLX +extension RANDR +extension RENDER +extension XFIXES -config /etc/X11/xorg.xdummy.conf
 
 # Stuff you want:
 # - google-chrome --no-sandbox --disable-gpu --disable-dev-shm-usage
-# - obs
+# - obs or ffmpeg (see README for details)
