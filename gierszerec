@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# You can pick another server types, but at least 3 cores are needed
+# for playback + recording to work fine with ffmpeg at 1080p. You
+# mignt need more for OBS or recording something like MS Teams:
+# - CX11, CPS11, CX21, CX31 drop frames consistently, don't.
+# - CPX21 works fine for ClickMeeting + ffmpeg, some drops on MS Teams.
+# - CPX31 does just about anything with ffmpeg and OBS.
+
+SERVER_NAME=GierszeRec
+SERVER_TYPE=cpx21
+SERVER_IMAGE=ubuntu-20.04
+SERVER_LOCATION=nbg1
+SERVER_SSH_KEY=$(hostname)
+
+DOCKER_IMAGE="dragoonaethis/gierszerec"
+DOCKER_PUBLISH="127.0.0.1:5900:5900"
+
+if [[ $(hcloud context active) == "" ]]; then
+    echo "You don't have a hcloud context active - see hcloud docs for more info. If this"
+    echo "is your first time using this script, remember to add your SSH key with its name"
+    echo "set to your hostname to the Hetzner project you're using."
+    exit 1
+fi
+
+case $1 in
+up)
+    hcloud server describe $SERVER_NAME >/dev/null
+    if [[ $? -eq 0 ]]; then
+        echo "Server already created, reusing..."
+    else
+        echo "Creating $SERVER_NAME..."
+        hcloud server create --name $SERVER_NAME --type $SERVER_TYPE --image $SERVER_IMAGE --location $SERVER_LOCATION --ssh-key $SERVER_SSH_KEY
+        if [[ $? -ne 0 ]]; then
+            echo "Couldn't create a server, bailing out"
+            exit 1
+        fi
+
+        # Looks about right for the cheaper ones...
+        echo "Waiting 15s for the server to settle..."
+        sleep 15
+    fi
+
+    # Server identity will change every time a server is recreated.
+    # Hetzner tries to reuse the last IP address for the same
+    # customer, so let's ignore known_hosts for now.
+    IPADDR=$(hcloud server ip $SERVER_NAME)
+    SSHCMD="ssh root@$IPADDR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+    $SSHCMD "docker" >/dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "Performing first-time setup..."
+
+        $SSHCMD "apt update && apt upgrade -y"
+        $SSHCMD "apt install -y docker.io jq"
+    fi
+
+    if [[ $($SSHCMD "docker ps --all --quiet --filter name=gierszerec") == "" ]]; then
+        echo "Setting up the container for the first time..."
+        $SSHCMD "docker pull $DOCKER_IMAGE"
+        $SSHCMD "docker volume create rec"
+    else
+        echo "Killing the existing container and restarting..."
+        $SSHCMD "docker rm --force gierszerec"
+    fi
+
+    $SSHCMD "docker run --name gierszerec --publish $DOCKER_PUBLISH --mount source=rec,target=/rec --detach $DOCKER_IMAGE"
+    echo "Done, your server for today will be: $IPADDR"
+    ;;
+
+down)
+    hcloud server delete $SERVER_NAME
+    ;;
+
+vnc)
+    IPADDR=$(hcloud server ip $SERVER_NAME)
+    if [[ $? -ne 0 ]]; then
+        echo "Server appears down..."
+        exit 1
+    fi
+
+    TEMP_FILE="$(mktemp --suffix=.remmina)"
+    cat <<EOF >$TEMP_FILE
+[remmina]
+ssh_tunnel_passphrase=
+name=GierszeRec
+ssh_tunnel_server=$IPADDR
+password=
+quality=9
+colordepth=32
+precommand=
+ssh_tunnel_enabled=1
+viewonly=0
+ignore-tls-errors=1
+disableserverinput=0
+postcommand=
+server=localhost
+disablepasswordstoring=0
+ssh_tunnel_username=root
+disableclipboard=0
+window_maximize=0
+ssh_tunnel_password=
+enable-autostart=0
+showcursor=0
+ssh_tunnel_auth=2
+ssh_tunnel_loopback=0
+proxy=
+disableencryption=0
+notes_text=
+group=
+window_width=1967
+window_height=1110
+keymap=
+viewmode=1
+ssh_tunnel_privatekey=
+username=
+protocol=VNC
+EOF
+
+    remmina "$TEMP_FILE"
+    sleep 3
+    rm $TEMP_FILE
+    ;;
+
+pull)
+    RECDIR="./rec-$(date --iso-8601)"
+    mkdir $RECDIR
+    if [[ $? -ne 0 ]]; then
+        echo "Could not create the local rec directory"
+        exit 1
+    fi
+
+    IPADDR=$(hcloud server ip $SERVER_NAME)
+    SSHCMD="ssh root@$IPADDR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+    RECVOL=$($SSHCMD "docker volume inspect rec | jq .[0].Mountpoint -r")
+    scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r root@$IPADDR:$RECVOL $RECDIR
+    ;;
+
+*)
+    echo "Available commands: up, down, vnc, pull"
+    exit 1
+    ;;
+esac

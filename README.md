@@ -11,11 +11,17 @@ along with OBS Studio, Chromium, ffmpeg, Mesa/llvmpipe, etc - so it's ready to r
 First start requires some setup:
 
 ```bash
-git clone https://github.com/DragoonAethis/GierszeRec.git && cd GierszeRec
-docker build -t dragoonaethis/gierszerec:1.0 .
+docker pull dragoonaethis/gierszerec
 docker volume create rec
 
-docker run --name gierszerec --publish 5900:5900 --mount source=rec,target=/rec dragoonaethis/gierszerec:1.0
+docker run --name gierszerec --publish 5900:5900 --mount source=rec,target=/rec dragoonaethis/gierszerec
+```
+
+If you'd rather build the image from scratch instead of pulling (swap the tag in `docker run`):
+
+```bash
+git clone https://github.com/DragoonAethis/GierszeRec.git && cd GierszeRec
+docker build -t dragoonaethis/gierszerec:tag .
 ```
 
 **Confirm OBS can record audio by opening the Desktop Audio -> Cog -> Properties page.** If there's
@@ -44,3 +50,32 @@ some reason PulseAudio dies every now and then. If that happens, recreate the co
 - `docker kill gierszerec`
 - `docker rm gierszerec`,
 - `docker run ...` command from the first start section.
+
+## Record with ffmpeg
+
+If you don't have a machine powerful enough to handle OBS (for example, if running on a shared host)
+then you'll have to use ffmpeg (1080p, 30FPS, grabs the entire screen and PulseAudio default output,
+encodes on a CPU with the `ultrafast` preset):
+
+```bash
+ffmpeg -video_size 1920x1080 -framerate 30 \
+    -f x11grab -i :0.0 \
+    -f pulse -ac 2 -i default \
+    -c:v h264 -preset ultrafast \
+    "/rec/$(date +'%Y-%m-%e %X').mkv"
+```
+
+## Hetzner helper
+
+If you're using Hetzner to host your stuff:
+
+- [Configure `hcloud` for a new project.](https://github.com/hetznercloud/cli#getting-started)
+- Use the `gierszerec up|down|vnc|pull` script in this repo to:
+  - `up`: Create a new server, configure Docker and start the container described above.
+  - `vnc`: Connect via VNC to the server using Remmina and a SSH tunnel.
+  - `pull`: Download the contents of the `rec` Docker volume to a new local directory.
+  - `down`: Destroy that server.
+
+It's a fast way to quickly set up a new recorder, pull all recorded files, then tear it down. The
+default `CPX21` image costs 0.014EUR/h, so it's pretty cheap. Note that it assumes `hcloud` is
+already configured with the context you want to use - it manages a server called `GierszeRec` in it.
