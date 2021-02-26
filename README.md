@@ -5,6 +5,8 @@ A tiny Docker container to record lectures and such on headless servers. Preferr
 Comes with minimal Openbox, Xdummy and all the stuff to run a persistent GUI session in a container,
 along with OBS Studio, Chromium, ffmpeg, Mesa/llvmpipe, etc - so it's ready to record anything.
 
+Ready-to-use images are published in the [Docker Hub](https://hub.docker.com/r/dragoonaethis/gierszerec).
+
 
 ## How to use
 
