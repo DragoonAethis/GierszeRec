@@ -79,6 +79,7 @@ If you're using Hetzner to host your stuff:
 - [Configure `hcloud` for a new project.](https://github.com/hetznercloud/cli#getting-started)
 - Use the `gierszerec up|down|vnc|pull` script in this repo to:
   - `up`: Create a new server, configure Docker and start the container described above.
+  - `ssh`: Connect via SSH to the server.
   - `vnc`: Connect via VNC to the server using Remmina and a SSH tunnel.
   - `pull`: Download the contents of the `rec` Docker volume to a new local directory.
   - `down`: Destroy that server.

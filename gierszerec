@@ -72,6 +72,16 @@ down)
     hcloud server delete $SERVER_NAME
     ;;
 
+ssh)
+    IPADDR=$(hcloud server ip $SERVER_NAME)
+    if [[ $? -ne 0 ]]; then
+        echo "Server appears down..."
+        exit 1
+    fi
+
+    ssh root@$IPADDR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${all_args[@]:1}
+    ;;
+
 vnc)
     IPADDR=$(hcloud server ip $SERVER_NAME)
     if [[ $? -ne 0 ]]; then
