@@ -9,9 +9,15 @@
 
 SERVER_NAME=GierszeRec
 SERVER_TYPE=cpx21
-SERVER_IMAGE=ubuntu-20.04
 SERVER_LOCATION=nbg1
 SERVER_SSH_KEY=$(hostname)
+
+# Uses ~same amount of RAM as Debian 10
+SERVER_IMAGE=ubuntu-20.04
+
+# Hold some packages to speed up the host VM provisioning
+# (Kernel/bootloader/etc need a reboot, we're not rebooting that VM anyways)
+SERVER_APT_HOLD="linux-image-virtual grub-common grub-efi-amd64-bin grub-pc-bin"
 
 DOCKER_IMAGE="dragoonaethis/gierszerec"
 DOCKER_PUBLISH="127.0.0.1:5900:5900"
@@ -51,8 +57,10 @@ up)
     if [[ $? -ne 0 ]]; then
         echo "Performing first-time setup..."
 
+        $SSHCMD "apt-mark hold $SERVER_APT_HOLD"
         $SSHCMD "apt update && apt upgrade -y"
         $SSHCMD "apt install -y docker.io jq"
+        $SSHCMD "apt-mark unhold $SERVER_APT_HOLD"
     fi
 
     if [[ $($SSHCMD "docker ps --all --quiet --filter name=gierszerec") == "" ]]; then
@@ -79,7 +87,8 @@ ssh)
         exit 1
     fi
 
-    ssh root@$IPADDR -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${all_args[@]:1}
+    shift
+    ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@$IPADDR -- $@
     ;;
 
 vnc)
@@ -147,7 +156,7 @@ pull)
     ;;
 
 *)
-    echo "Available commands: up, down, vnc, pull"
+    echo "Available commands: up, down, ssh, vnc, pull"
     exit 1
     ;;
 esac
