@@ -76,8 +76,11 @@ and off you go.
 
 If you're using Hetzner to host your stuff:
 
-- [Configure `hcloud` for a new project.](https://github.com/hetznercloud/cli#getting-started)
-- Use the `gierszerec up|down|vnc|pull` script in this repo to:
+- Log into the [Hetzner Cloud](https://console.hetzner.cloud) console.
+- Create a new project to store the VMs in.
+- Add SSH keys to the project with names matching the client's hostname. (The script uses the output of `hostname` as the SSH key name to provision the VM with.)
+- Generate API keys and [configure `hcloud` for that project](https://github.com/hetznercloud/cli#getting-started).
+- Use the `gierszerec up|down|ssh|vnc|pull` script in this repo to:
   - `up`: Create a new server, configure Docker and start the container described above.
   - `ssh`: Connect via SSH to the server.
   - `vnc`: Connect via VNC to the server using Remmina and a SSH tunnel.
